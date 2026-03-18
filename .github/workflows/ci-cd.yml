@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
   REGISTRY: docker.io
 
@@ -58,3 +62,61 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/planner-webapp:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/planner-webapp:${{ github.sha }}
+
+  deploy-aws:
+    name: Deploy to AWS (ECR + ECS Fargate)
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to ECR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Create task definition from template
+        shell: bash
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ECS_TASK_EXECUTION_ROLE_ARN: ${{ secrets.ECS_TASK_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ secrets.ECS_TASK_ROLE_ARN }}
+          ECS_CONTAINER_NAME: ${{ secrets.ECS_CONTAINER_NAME }}
+          IMAGE_URI: ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          p = Path(".aws/task-definition.json")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace("__AWS_REGION__", os.environ["AWS_REGION"])
+          s = s.replace("__EXECUTION_ROLE_ARN__", os.environ["ECS_TASK_EXECUTION_ROLE_ARN"])
+          s = s.replace("__TASK_ROLE_ARN__", os.environ["ECS_TASK_ROLE_ARN"])
+          s = s.replace("__CONTAINER_NAME__", os.environ["ECS_CONTAINER_NAME"])
+          s = s.replace("__IMAGE__", os.environ["IMAGE_URI"])
+          p.write_text(s, encoding="utf-8")
+          print("Rendered task definition:", p)
+          PY
+
+      - name: Deploy task definition to ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: .aws/task-definition.json
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true

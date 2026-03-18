@@ -10,8 +10,8 @@ This project features an end-to-end automated deployment pipeline built from scr
 
 1. **Push to `main`** triggers a GitHub Actions workflow
 2. **Docker image** is built automatically from the Dockerfile
-3. **Image is pushed** to Docker Hub container registry
-4. **Deployed to AWS Fargate (ECS)** for scalable, serverless container hosting
+3. **Image is pushed** to Amazon ECR (and optionally Docker Hub)
+4. **Deployed to AWS Fargate (ECS)** behind an Application Load Balancer (ALB)
 
 > See [PIPELINE-SETUP.md](./PIPELINE-SETUP.md) for full pipeline breakdown and architecture details.
 
@@ -24,7 +24,8 @@ This project features an end-to-end automated deployment pipeline built from scr
 | Frontend | React 19, TypeScript, Vite |
 | Containerization | Docker |
 | CI/CD | GitHub Actions |
-| Container Registry | Docker Hub |
+| Infrastructure as Code | Terraform |
+| Container Registry | Amazon ECR (optional: Docker Hub) |
 | Cloud Hosting | AWS Fargate (ECS) |
 | Linting | ESLint, eslint-plugin-react-x |
 
@@ -35,6 +36,8 @@ This project features an end-to-end automated deployment pipeline built from scr
 ```
 Planner/
 ├── .github/workflows/     # GitHub Actions CI/CD pipeline
+├── infra/                 # Terraform (AWS ECR + ECS Fargate + ALB)
+├── .aws/                  # ECS task definition template (used by CI/CD)
 ├── public/                # Static assets
 ├── src/                   # React + TypeScript source
 ├── Dockerfile             # Container configuration
@@ -55,10 +58,10 @@ npm run dev
 
 **With Docker:**
 ```bash
-docker build -t planner .
-docker run -p 5173:5173 planner
+docker build -t planner-webapp:local .
+docker run -p 8080:80 planner-webapp:local
 ```
-Then open [http://localhost:5173](http://localhost:5173)
+Then open [http://localhost:8080](http://localhost:8080)
 
 ---
 
@@ -74,7 +77,7 @@ GitHub Actions Trigger
 Docker Image Build
       │
       ▼
-Push to Docker Hub Registry
+Push to Amazon ECR
       │
       ▼
 Deploy to AWS Fargate (ECS)

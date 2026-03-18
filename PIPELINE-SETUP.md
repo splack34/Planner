@@ -10,6 +10,8 @@ Follow these steps to get the pipeline running with Docker and a hosted webapp.
 - **Docker** – [Install Docker](https://docs.docker.com/get-docker/) (Desktop or Engine).
 - **Docker Hub account** – [Sign up](https://hub.docker.com/signup).
 - **GitHub account** – push your `planner` repo to GitHub so Actions can run.
+- **AWS account** – you’ll deploy to ECS Fargate behind an ALB.
+- **Terraform** – install from [terraform.io](https://developer.hashicorp.com/terraform/downloads).
 
 ---
 
@@ -93,14 +95,56 @@ Open [http://localhost:8080](http://localhost:8080).
 
 ## 8. Deploy the image to the cloud (next step)
 
-The pipeline only builds and pushes the image. To **host** the webapp you add a **deploy** step that uses that image, for example:
+This repo now supports **AWS ECS Fargate (Option A)** with **Terraform + GitHub Actions**:
 
-- **Azure**: Web App for Containers, or Container Apps.
-- **AWS**: App Runner, ECS, or Fargate.
-- **GCP**: Cloud Run.
-- **Other**: Any VM or PaaS that can run Docker (e.g. `docker run` or Docker Compose).
+- **Terraform** (`infra/`) creates: **ECR repo**, **ECS cluster/service**, **ALB**, security groups, IAM roles, and logs.
+- **GitHub Actions** builds your Docker image, pushes it to **ECR**, then updates the **ECS service** to the new task definition.
 
-If you tell me which cloud you prefer (e.g. Azure, AWS, GCP), I can add a deploy job to the workflow that pulls `DOCKERHUB_USERNAME/planner-webapp:latest` and deploys it there.
+### 8.1 Provision AWS infrastructure with Terraform (one-time)
+
+1. Configure AWS credentials locally (AWS CLI) so Terraform can create resources.
+2. From the `planner` folder:
+
+```bash
+cd infra
+terraform init
+terraform apply
+```
+
+After `apply`, Terraform outputs values you will use for GitHub Secrets:
+
+- `alb_dns_name` (your hosted app URL)
+- `ecr_repository_url`
+- `ecs_cluster_name`
+- `ecs_service_name`
+- `ecs_task_execution_role_arn`
+- `ecs_task_role_arn`
+- `github_actions_role_arn` (this becomes `AWS_ROLE_ARN`)
+
+### 8.2 Add AWS deploy secrets to GitHub Actions
+
+In GitHub: **Settings → Secrets and variables → Actions → New repository secret**.
+
+Required for AWS deploy job:
+
+| Secret name | Example value |
+|---|---|
+| `AWS_REGION` | `us-east-1` |
+| `AWS_ROLE_ARN` | `arn:aws:iam::123456789012:role/github-actions-ecs-deploy` |
+| `ECR_REPOSITORY` | `planner-webapp` |
+| `ECS_CLUSTER` | `planner-cluster` |
+| `ECS_SERVICE` | `planner-service` |
+| `ECS_CONTAINER_NAME` | `planner-webapp` |
+| `ECS_TASK_EXECUTION_ROLE_ARN` | (from Terraform output) |
+| `ECS_TASK_ROLE_ARN` | (from Terraform output) |
+
+### 8.3 Push to deploy
+
+On every push to `main`, the workflow will:
+
+1. Build and push image to ECR tagged with the commit SHA
+2. Register a new ECS task definition revision
+3. Update the ECS service to that revision and wait for stability
 
 ---
 
