@@ -61,12 +61,12 @@ variable "task_memory" {
 variable "github_owner" {
   type        = string
   description = "GitHub org/user that owns the repository (for OIDC trust)."
-  default     = "YOUR_GITHUB_USERNAME"
+  default     = "splack34"
 }
 
 variable "github_repo" {
   type        = string
   description = "GitHub repository name (for OIDC trust)."
-  default     = "planner"
+  default     = "Planner"
 }
 
