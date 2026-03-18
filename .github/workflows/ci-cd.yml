@@ -89,6 +89,8 @@ jobs:
           push: true
           tags: |
             ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
+            ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:bootstrap
 
       - name: Create task definition from template
         shell: bash
