@@ -38,8 +38,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Job-level outputs cannot use secrets.* in the expression. Export URI from a step instead.
     outputs:
-      image-uri: ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+      image-uri: ${{ steps.image_meta.outputs.uri }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,8 +72,16 @@ jobs:
           tags: |
             ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
             ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
+            ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:bootstrap
             ${{ secrets.DOCKERHUB_USERNAME }}/planner-webapp:${{ github.sha }}
             ${{ secrets.DOCKERHUB_USERNAME }}/planner-webapp:latest
+
+      - name: Set image URI for deploy job
+        id: image_meta
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPO: ${{ secrets.ECR_REPOSITORY }}
+        run: echo "uri=${REGISTRY}/${REPO}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
   deploy-aws:
     name: Deploy to AWS ECS Fargate
