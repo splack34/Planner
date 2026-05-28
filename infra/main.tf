@@ -50,7 +50,7 @@ resource "aws_iam_role" "task" {
 
 # GitHub Actions → AWS auth (OIDC). Terraform creates the role that the workflow assumes.
 resource "aws_iam_openid_connect_provider" "github" {
-  url = "token.actions.githubusercontent.com"
+  url = "https://token.actions.githubusercontent.com"
 
   client_id_list = ["sts.amazonaws.com"]
 
