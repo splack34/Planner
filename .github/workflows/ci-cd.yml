@@ -7,9 +7,8 @@ on:
     branches: [main]
 
 permissions:
-  id-token: write
   contents: read
-
+  id-token: write
 
 jobs:
   ci:
@@ -110,8 +109,7 @@ jobs:
           ECS_TASK_EXECUTION_ROLE_ARN: ${{ secrets.ECS_TASK_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ secrets.ECS_TASK_ROLE_ARN }}
           ECS_CONTAINER_NAME: ${{ secrets.ECS_CONTAINER_NAME }}
-          IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
-        run: |
+          IMAGE_URI: ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}        run: |
           python - <<'PY'
           from pathlib import Path
           import os
