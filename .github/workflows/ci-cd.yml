@@ -109,7 +109,7 @@ jobs:
           ECS_TASK_EXECUTION_ROLE_ARN: ${{ secrets.ECS_TASK_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ secrets.ECS_TASK_ROLE_ARN }}
           ECS_CONTAINER_NAME: ${{ secrets.ECS_CONTAINER_NAME }}
-          IMAGE_URI: ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}        run: |
+          IMAGE_URI: "${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}"
           python - <<'PY'
           from pathlib import Path
           import os
