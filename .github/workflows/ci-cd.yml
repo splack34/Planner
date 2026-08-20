@@ -135,78 +135,78 @@ jobs:
           wait-for-service-stability: true
 
   observability-platform:
-  name: Provision Observability Platform
-  runs-on: ubuntu-latest
+    name: Provision Observability Platform
+    runs-on: ubuntu-latest
 
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-  permissions:
-    id-token: write
-    contents: read
+    permissions:
+      id-token: write
+      contents: read
 
-  env:
-    AWS_REGION: ${{ secrets.AWS_REGION }}
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
 
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v5
-      with:
-        role-to-assume: ${{ secrets.OBSERVABILITY_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.OBSERVABILITY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Verify AWS identity
-      run: aws sts get-caller-identity
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.13.0
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.0
 
-    - name: Terraform Format Check
-      working-directory: infra/observability
-      run: terraform fmt -check
+      - name: Terraform Format Check
+        working-directory: infra/observability
+        run: terraform fmt -check
 
-    - name: Terraform Init
-      working-directory: infra/observability
-      run: terraform init
+      - name: Terraform Init
+        working-directory: infra/observability
+        run: terraform init
 
-    - name: Terraform Validate
-      working-directory: infra/observability
-      run: terraform validate
+      - name: Terraform Validate
+        working-directory: infra/observability
+        run: terraform validate
 
-    - name: Terraform Plan
-      working-directory: infra/observability
-      run: terraform plan -out=tfplan
+      - name: Terraform Plan
+        working-directory: infra/observability
+        run: terraform plan -out=tfplan
 
-    - name: Terraform Apply
-      working-directory: infra/observability
-      run: terraform apply -auto-approve tfplan
+      - name: Terraform Apply
+        working-directory: infra/observability
+        run: terraform apply -auto-approve tfplan
 
-    - name: Verify ECS Log Group
-      run: |
-        aws logs describe-log-groups \
-          --log-group-name-prefix "/ecs/planner"
+      - name: Verify ECS Log Group
+        run: |
+          aws logs describe-log-groups \
+            --log-group-name-prefix "/ecs/planner"
 
-    - name: Verify ECS Metrics
-      run: |
-        aws cloudwatch list-metrics \
-          --namespace AWS/ECS \
-          --metric-name CPUUtilization
+      - name: Verify ECS Metrics
+        run: |
+          aws cloudwatch list-metrics \
+            --namespace AWS/ECS \
+            --metric-name CPUUtilization
 
-    - name: Verify ALB Metrics
-      run: |
-        aws cloudwatch list-metrics \
-          --namespace AWS/ApplicationELB \
-          --metric-name RequestCount
+      - name: Verify ALB Metrics
+        run: |
+          aws cloudwatch list-metrics \
+            --namespace AWS/ApplicationELB \
+            --metric-name RequestCount
 
-    - name: Verify ALB Log Bucket
-      run: |
-        aws s3 ls | grep planner-alb || true
+      - name: Verify ALB Log Bucket
+        run: |
+          aws s3 ls | grep planner-alb || true
 
-    - name: Verify Athena Database
-      run: |
-        aws athena list-databases \
-          --catalog-name AwsDataCatalog
+      - name: Verify Athena Database
+        run: |
+          aws athena list-databases \
+            --catalog-name AwsDataCatalog
