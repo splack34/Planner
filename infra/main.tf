@@ -9,7 +9,7 @@ data "aws_subnets" "default" {
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
-    
+
   }
 }
 
@@ -275,3 +275,75 @@ resource "aws_ecs_service" "app" {
   }
 }
 
+
+resource "aws_cloudwatch_dashboard" "planner" {
+  dashboard_name = "${var.project_name}-dashboard"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "text"
+        x      = 0
+        y      = 0
+        width  = 24
+        height = 2
+
+        properties = {
+          markdown = "# Planner System Dashboard\nECS Fargate + ALB service health and performance"
+        }
+      },
+
+      {
+        type   = "metric"
+        x      = 0
+        y      = 2
+        width  = 12
+        height = 6
+
+        properties = {
+          title  = "ECS CPU Utilization"
+          region = var.aws_region
+          stat   = "Average"
+          period = 60
+
+          metrics = [
+            [
+              "AWS/ECS",
+              "CPUUtilization",
+              "ServiceName",
+              var.ecs_service_name,
+              "ClusterName",
+              var.ecs_cluster_name
+            ]
+          ]
+        }
+      },
+
+      {
+        type   = "metric"
+        x      = 12
+        y      = 2
+        width  = 12
+        height = 6
+
+        properties = {
+          title  = "ECS Memory Utilization"
+          region = var.aws_region
+          stat   = "Average"
+          period = 60
+
+          metrics = [
+            [
+              "AWS/ECS",
+              "MemoryUtilization",
+              "ServiceName",
+              var.ecs_service_name,
+              "ClusterName",
+              var.ecs_cluster_name
+            ]
+          ]
+        }
+      }
+    ]
+  })
+}
